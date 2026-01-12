@@ -2,8 +2,6 @@ module github.com/savedhq/sctl
 
 go 1.25.5
 
-replace github.com/savedhq/sdk-go => ../sdk-go
-
 require (
 	github.com/fatih/color v1.18.0
 	github.com/google/uuid v1.6.0
