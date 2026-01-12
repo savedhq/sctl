@@ -17,6 +17,18 @@ Command-line interface for managing Saved workspaces, agents, jobs, backups, and
 go build -o sctl ./cmd/main.go
 ```
 
+### macOS Gatekeeper
+
+If you download a pre-built binary, you may need to remove the quarantine attribute and make it executable:
+
+```bash
+# Allow the binary to run (remove quarantine)
+xattr -d com.apple.quarantine sctl-darwin-arm64
+
+# Make executable
+chmod +x sctl-darwin-arm64
+```
+
 ## Quick Start
 
 ### 1. Initialize Configuration
@@ -260,6 +272,23 @@ sctl/
 go build -o sctl ./cmd/main.go
 ```
 
+### Local Development
+
+This project uses `go.work` to manage local dependencies (specifically `sdk-go`).
+
+1. **Clone `sdk-go`** to a sibling directory:
+   ```bash
+   git clone https://github.com/savedhq/sdk-go.git ../sdk-go
+   ```
+
+2. **Initialize `go.work`** (this file is git-ignored):
+   ```bash
+   go work init
+   go work use .
+   go work use ../sdk-go
+   ```
+
+**Note:** Do not modify `go.mod` to add `replace` directives.
 ### Testing
 
 ```bash
