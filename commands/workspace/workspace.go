@@ -6,6 +6,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/savedhq/sctl/internal"
+	saved "github.com/savedhq/sdk-go"
 	"github.com/spf13/cobra"
 )
 
@@ -42,14 +43,14 @@ func newWorkspaceListCmd() *cobra.Command {
 			defer r.Body.Close()
 
 			if len(resp) == 0 {
-				color.Yellow("⚠ No workspaces found")
+				fmt.Fprintln(cmd.OutOrStdout(), color.YellowString("⚠ No workspaces found"))
 				return nil
 			}
 
 			for _, ws := range resp {
-				color.Cyan("ID: %s", ws.GetId())
-				fmt.Printf("  Name: %s\n", ws.GetName())
-				fmt.Printf("  Created: %s\n\n", ws.GetCreatedAt().Format("2006-01-02 15:04:05"))
+				fmt.Fprintln(cmd.OutOrStdout(), color.CyanString("ID: %s", ws.GetId()))
+				fmt.Fprintf(cmd.OutOrStdout(), "  Name: %s\n", ws.GetName())
+				fmt.Fprintf(cmd.OutOrStdout(), "  Created: %s\n\n", ws.GetCreatedAt().Format("2006-01-02 15:04:05"))
 			}
 			return nil
 		},
@@ -57,7 +58,6 @@ func newWorkspaceListCmd() *cobra.Command {
 }
 
 func newWorkspaceGetCmd() *cobra.Command {
-	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "get <workspace_id>",
 		Short: "Get workspace details",
@@ -66,6 +66,11 @@ func newWorkspaceGetCmd() *cobra.Command {
 			cliCtx := internal.GetCLIContext(cmd.Context())
 			if cliCtx == nil {
 				return fmt.Errorf("CLI context not initialized")
+			}
+
+			if !cmd.Flags().Changed("name") {
+				fmt.Fprintln(cmd.OutOrStdout(), "No changes specified. Use --name to set a new name.")
+				return nil
 			}
 
 			id, err := cliCtx.ResolveWorkspaceID(args[0])
@@ -79,18 +84,19 @@ func newWorkspaceGetCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
+			jsonOutput, _ := cmd.Flags().GetBool("json")
 			if jsonOutput {
 				data, _ := json.MarshalIndent(resp, "", "  ")
-				fmt.Println(string(data))
+				fmt.Fprintln(cmd.OutOrStdout(), string(data))
 			} else {
-				color.Cyan("ID: %s", resp.GetId())
-				fmt.Printf("Name: %s\n", resp.GetName())
-				fmt.Printf("Created: %s\n", resp.GetCreatedAt().Format("2006-01-02 15:04:05"))
+				fmt.Fprintln(cmd.OutOrStdout(), color.CyanString("ID: %s", resp.GetId()))
+				fmt.Fprintf(cmd.OutOrStdout(), "Name: %s\n", resp.GetName())
+				fmt.Fprintf(cmd.OutOrStdout(), "Created: %s\n", resp.GetCreatedAt().Format("2006-01-02 15:04:05"))
 			}
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
+	cmd.Flags().Bool("json", false, "Output as JSON")
 	return cmd
 }
 
@@ -105,14 +111,19 @@ func newWorkspaceCreateCmd() *cobra.Command {
 				return fmt.Errorf("CLI context not initialized")
 			}
 
-			resp, r, err := cliCtx.Client.WorkspacesAPI.CreateWorkspace(cliCtx.APICtx).Execute()
+			req := cliCtx.Client.WorkspacesAPI.CreateWorkspace(cliCtx.APICtx)
+			req = req.CreateWorkspaceRequest(saved.CreateWorkspaceRequest{
+				Name: name,
+			})
+
+			resp, r, err := req.Execute()
 			if err != nil {
 				return fmt.Errorf("API error: %v", err)
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Workspace created")
-			color.Cyan("ID: %s", resp.GetId())
+			fmt.Fprintln(cmd.OutOrStdout(), color.GreenString("✓ Workspace created"))
+			fmt.Fprintln(cmd.OutOrStdout(), color.CyanString("ID: %s", resp.GetId()))
 			return nil
 		},
 	}
@@ -121,7 +132,8 @@ func newWorkspaceCreateCmd() *cobra.Command {
 }
 
 func newWorkspaceUpdateCmd() *cobra.Command {
-	return &cobra.Command{
+	var name string
+	cmd := &cobra.Command{
 		Use:   "update <workspace_id>",
 		Short: "Update a workspace",
 		Args:  cobra.ExactArgs(1),
@@ -136,16 +148,23 @@ func newWorkspaceUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			_, r, err := cliCtx.Client.WorkspacesAPI.UpdateWorkspace(cliCtx.APICtx, id).Execute()
+			req := cliCtx.Client.WorkspacesAPI.UpdateWorkspace(cliCtx.APICtx, id)
+			req = req.UpdateWorkspaceRequest(saved.UpdateWorkspaceRequest{
+				Name: name,
+			})
+
+			_, r, err := req.Execute()
 			if err != nil {
 				return fmt.Errorf("API error: %v", err)
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Workspace updated")
+			fmt.Fprintln(cmd.OutOrStdout(), color.GreenString("✓ Workspace updated"))
 			return nil
 		},
 	}
+	cmd.Flags().StringVarP(&name, "name", "n", "", "Workspace name")
+	return cmd
 }
 
 func newWorkspaceDeleteCmd() *cobra.Command {
@@ -170,7 +189,7 @@ func newWorkspaceDeleteCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Workspace deleted")
+			fmt.Fprintln(cmd.OutOrStdout(), color.GreenString("✓ Workspace deleted"))
 			return nil
 		},
 	}
