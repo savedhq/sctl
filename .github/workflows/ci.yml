@@ -31,6 +31,9 @@ jobs:
           go work use .
           go work use ./local-sdk-go
 
+      - name: Tidy modules
+        run: go mod tidy
+
       - name: Run tests
         run: go test -v ./...
 
