@@ -122,3 +122,25 @@ func (c *CLIContext) ResolveAgentID(workspaceID, nameOrID string) (string, error
 
 	return "", fmt.Errorf("agent '%s' not found", nameOrID)
 }
+
+func (c *CLIContext) ResolveScheduleID(workspaceID, nameOrID string) (string, error) {
+	if _, err := uuid.Parse(nameOrID); err == nil {
+		return nameOrID, nil
+	}
+
+	// TODO: Uncomment when SDK is updated with SchedulesAPI
+	// // Try to find by name
+	// resp, r, err := c.Client.SchedulesAPI.ListSchedules(c.APICtx, workspaceID).Execute()
+	// if err != nil {
+	// 	return "", fmt.Errorf("failed to list schedules: %w", err)
+	// }
+	// defer r.Body.Close()
+
+	// for _, schedule := range resp {
+	// 	if schedule.GetId() == nameOrID {
+	// 		return schedule.GetId(), nil
+	// 	}
+	// }
+
+	return "", fmt.Errorf("schedule '%s' not found", nameOrID)
+}
