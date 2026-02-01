@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/fatih/color"
@@ -32,35 +31,32 @@ func newAgentListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all agents",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
+			internal.CheckErr(cliCtx.Err)
 
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
-			if err != nil {
-				return err
-			}
+			internal.CheckErr(err)
 
 			resp, r, err := cliCtx.Client.AgentsAPI.ListAgents(cliCtx.APICtx, workspaceID).Execute()
-			if err != nil {
-				return internal.PrintAPIError(err)
-			}
+			internal.CheckErr(internal.PrintAPIError(err))
 			defer r.Body.Close()
 
-			if len(resp) == 0 {
-				color.Yellow("⚠ No agents found")
-				return nil
-			}
+			if cliCtx.JSONOutput {
+				internal.PrintJSON(resp)
+			} else {
+				if len(resp) == 0 {
+					color.Yellow("⚠ No agents found")
+					return
+				}
 
-			for _, agent := range resp {
-				color.Cyan("ID: %s", agent.GetId())
-				fmt.Printf("  Name: %s\n", agent.GetName())
-				fmt.Printf("  Status: %s\n\n", agent.GetStatus())
+				for _, agent := range resp {
+					color.Cyan("ID: %s", agent.GetId())
+					fmt.Printf("  Name: %s\n", agent.GetName())
+					fmt.Printf("  Status: %s\n\n", agent.GetStatus())
+				}
 			}
-			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
@@ -69,47 +65,35 @@ func newAgentListCmd() *cobra.Command {
 
 func newAgentGetCmd() *cobra.Command {
 	var workspaceID string
-	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "get <agent_id>",
 		Short: "Get agent details",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
+			internal.CheckErr(cliCtx.Err)
 
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
-			if err != nil {
-				return err
-			}
+			internal.CheckErr(err)
 
 			agentID, err := cliCtx.ResolveAgentID(workspaceID, args[0])
-			if err != nil {
-				return err
-			}
+			internal.CheckErr(err)
 
 			resp, r, err := cliCtx.Client.AgentsAPI.GetAgent(cliCtx.APICtx, workspaceID, agentID).Execute()
-			if err != nil {
-				return internal.PrintAPIError(err)
-			}
+			internal.CheckErr(internal.PrintAPIError(err))
 			defer r.Body.Close()
 
-			if jsonOutput {
-				data, _ := json.MarshalIndent(resp, "", "  ")
-				fmt.Println(string(data))
+			if cliCtx.JSONOutput {
+				internal.PrintJSON(resp)
 			} else {
 				color.Cyan("ID: %s", resp.GetId())
 				fmt.Printf("Name: %s\n", resp.GetName())
 				fmt.Printf("Status: %s\n", resp.GetStatus())
 			}
-			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }
 
@@ -118,17 +102,13 @@ func newAgentCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a new agent",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
+			internal.CheckErr(cliCtx.Err)
 
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
-			if err != nil {
-				return err
-			}
+			internal.CheckErr(err)
 
 			req := saved.CreateAgentRequest{}
 			if name != "" {
@@ -136,14 +116,15 @@ func newAgentCreateCmd() *cobra.Command {
 			}
 
 			resp, r, err := cliCtx.Client.AgentsAPI.CreateAgent(cliCtx.APICtx, workspaceID).CreateAgentRequest(req).Execute()
-			if err != nil {
-				return internal.PrintAPIError(err)
-			}
+			internal.CheckErr(internal.PrintAPIError(err))
 			defer r.Body.Close()
 
-			color.Green("✓ Agent created")
-			color.Cyan("ID: %s", resp.GetId())
-			return nil
+			if cliCtx.JSONOutput {
+				internal.PrintJSON(resp)
+			} else {
+				color.Green("✓ Agent created")
+				color.Cyan("ID: %s", resp.GetId())
+			}
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
@@ -157,31 +138,26 @@ func newAgentUpdateCmd() *cobra.Command {
 		Use:   "update <agent_id>",
 		Short: "Update an agent",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
+			internal.CheckErr(cliCtx.Err)
 
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
-			if err != nil {
-				return err
-			}
+			internal.CheckErr(err)
 
 			agentID, err := cliCtx.ResolveAgentID(workspaceID, args[0])
-			if err != nil {
-				return err
-			}
+			internal.CheckErr(err)
 
 			_, r, err := cliCtx.Client.AgentsAPI.UpdateAgent(cliCtx.APICtx, workspaceID, agentID).Execute()
-			if err != nil {
-				return internal.PrintAPIError(err)
-			}
+			internal.CheckErr(internal.PrintAPIError(err))
 			defer r.Body.Close()
 
-			color.Green("✓ Agent updated")
-			return nil
+			if cliCtx.JSONOutput {
+				internal.PrintJSON(map[string]string{"status": "ok"})
+			} else {
+				color.Green("✓ Agent updated")
+			}
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
@@ -194,31 +170,26 @@ func newAgentDeleteCmd() *cobra.Command {
 		Use:   "delete <agent_id>",
 		Short: "Delete an agent",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
+			internal.CheckErr(cliCtx.Err)
 
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
-			if err != nil {
-				return err
-			}
+			internal.CheckErr(err)
 
 			agentID, err := cliCtx.ResolveAgentID(workspaceID, args[0])
-			if err != nil {
-				return err
-			}
+			internal.CheckErr(err)
 
 			r, err := cliCtx.Client.AgentsAPI.DeleteAgent(cliCtx.APICtx, workspaceID, agentID).Execute()
-			if err != nil {
-				return internal.PrintAPIError(err)
-			}
+			internal.CheckErr(internal.PrintAPIError(err))
 			defer r.Body.Close()
 
-			color.Green("✓ Agent deleted")
-			return nil
+			if cliCtx.JSONOutput {
+				internal.PrintJSON(map[string]string{"status": "ok"})
+			} else {
+				color.Green("✓ Agent deleted")
+			}
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
@@ -231,33 +202,26 @@ func newAgentCredentialsCmd() *cobra.Command {
 		Use:   "reset-credentials <agent_id>",
 		Short: "Reset agent credentials",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
+			internal.CheckErr(cliCtx.Err)
 
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
-			if err != nil {
-				return err
-			}
+			internal.CheckErr(err)
 
 			agentID, err := cliCtx.ResolveAgentID(workspaceID, args[0])
-			if err != nil {
-				return err
-			}
+			internal.CheckErr(err)
 
 			resp, r, err := cliCtx.Client.AgentsAPI.ResetAgentCredentials(cliCtx.APICtx, workspaceID, agentID).Execute()
-			if err != nil {
-				return internal.PrintAPIError(err)
-			}
+			internal.CheckErr(internal.PrintAPIError(err))
 			defer r.Body.Close()
 
-			color.Green("✓ Credentials reset")
-			data, _ := json.MarshalIndent(resp, "", "  ")
-			fmt.Println(string(data))
-			return nil
+			if cliCtx.JSONOutput {
+				internal.PrintJSON(resp)
+			} else {
+				color.Green("✓ Credentials reset")
+			}
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")

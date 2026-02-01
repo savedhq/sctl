@@ -30,14 +30,13 @@ func newAuthLoginCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Login to Saved",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
 			viper.SetConfigName("config")
 			viper.SetConfigType("yaml")
 
 			homeDir, err := os.UserHomeDir()
-			if err != nil {
-				return fmt.Errorf("failed to get home directory: %w", err)
-			}
+			internal.CheckErr(fmt.Errorf("failed to get home directory: %w", err))
+
 			viper.AddConfigPath(homeDir + "/.sctl")
 			viper.ReadInConfig()
 
@@ -79,27 +78,19 @@ func newAuthLoginCmd() *cobra.Command {
 			if issuer == "" || clientID == "" || audience == "" {
 				color.Cyan("Fetching authentication configuration from %s...", serverURL)
 				authConfig, err := internal.FetchAuthConfig(serverURL)
-				if err != nil {
-					return fmt.Errorf("failed to fetch auth config (and no flags provided): %w", err)
-				}
+				internal.CheckErr(fmt.Errorf("failed to fetch auth config (and no flags provided): %w", err))
 				issuer = authConfig.Issuer
 				clientID = authConfig.ClientID
 				audience = authConfig.Audience
 				color.Green("✓ Configuration fetched")
 			}
 
-			if issuer == "" || clientID == "" || audience == "" {
-				return fmt.Errorf("authentication configuration requirement invalid after fetch")
-			}
+			internal.CheckErr(fmt.Errorf("authentication configuration requirement invalid after fetch"))
 
 			token, err := internal.LoginWithDeviceFlow(issuer, clientID, audience, scope)
-			if err != nil {
-				return err
-			}
+			internal.CheckErr(err)
 
-			if err := internal.InitConfig(); err != nil {
-				return fmt.Errorf("failed to initialize config: %w", err)
-			}
+			internal.CheckErr(fmt.Errorf("failed to initialize config: %w", internal.InitConfig()))
 
 			// Save Token and Auth Config
 			viper.Set("api_key", token.AccessToken)
@@ -111,14 +102,10 @@ func newAuthLoginCmd() *cobra.Command {
 			home, _ := os.UserHomeDir()
 			configPath := home + "/.sctl/config.yaml"
 
-			if err := viper.WriteConfigAs(configPath); err != nil {
-				return fmt.Errorf("failed to save token: %w", err)
-			}
+			internal.CheckErr(fmt.Errorf("failed to save token: %w", viper.WriteConfigAs(configPath)))
 
 			color.Green("✓ Logged in successfully")
 			color.Cyan("Token and auth config saved to ~/.sctl/config.yaml")
-
-			return nil
 		},
 	}
 
@@ -134,7 +121,7 @@ func newAuthLogoutCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "logout",
 		Short: "Logout and remove stored credentials",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
 			viper.SetConfigName("config")
 			viper.SetConfigType("yaml")
 			viper.AddConfigPath("$HOME/.sctl")
@@ -146,12 +133,9 @@ func newAuthLogoutCmd() *cobra.Command {
 			home, _ := os.UserHomeDir()
 			configPath := home + "/.sctl/config.yaml"
 
-			if err := viper.WriteConfigAs(configPath); err != nil {
-				return fmt.Errorf("failed to clear credentials: %w", err)
-			}
+			internal.CheckErr(fmt.Errorf("failed to clear credentials: %w", viper.WriteConfigAs(configPath)))
 
 			color.Green("✓ Logged out successfully")
-			return nil
 		},
 	}
 }
@@ -160,7 +144,10 @@ func newAuthStatusCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
 		Short: "Check authentication status",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
+			cliCtx := internal.GetCLIContext(cmd.Context())
+			internal.CheckErr(cliCtx.Err)
+
 			viper.SetConfigName("config")
 			viper.SetConfigType("yaml")
 			viper.AddConfigPath("$HOME/.sctl")
@@ -168,20 +155,24 @@ func newAuthStatusCmd() *cobra.Command {
 
 			apiKey := viper.GetString("api_key")
 
-			if apiKey == "" {
-				color.Yellow("⚠ Not logged in")
-				color.Cyan("Run 'sctl auth login' to authenticate")
-				return nil
+			if cliCtx.JSONOutput {
+				internal.PrintJSON(map[string]interface{}{
+					"logged_in": apiKey != "",
+				})
+			} else {
+				if apiKey == "" {
+					color.Yellow("⚠ Not logged in")
+					color.Cyan("Run 'sctl auth login' to authenticate")
+					return
+				}
+
+				color.Green("✓ Logged in")
+
+				tokenLen := len(apiKey)
+				if tokenLen > 20 {
+					fmt.Printf("Token: %s...%s\n", apiKey[:8], apiKey[tokenLen-8:])
+				}
 			}
-
-			color.Green("✓ Logged in")
-
-			tokenLen := len(apiKey)
-			if tokenLen > 20 {
-				fmt.Printf("Token: %s...%s\n", apiKey[:8], apiKey[tokenLen-8:])
-			}
-
-			return nil
 		},
 	}
 }

@@ -16,9 +16,11 @@ const (
 )
 
 type CLIContext struct {
-	Config *Config
-	Client *saved.APIClient
-	APICtx context.Context
+	Config     *Config
+	Client     *saved.APIClient
+	APICtx     context.Context
+	JSONOutput bool
+	Err        error
 }
 
 func NewCLIContext(cfg *Config) (*CLIContext, error) {

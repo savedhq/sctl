@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/fatih/color"
+	"github.com/mattn/go-isatty"
 	"github.com/savedhq/sctl/commands/agent"
 	"github.com/savedhq/sctl/commands/auth"
 	"github.com/savedhq/sctl/commands/backup"
@@ -18,6 +20,12 @@ import (
 const version = "1.0.0"
 
 func main() {
+	// Disable color output when not a TTY
+	if !isatty.IsTerminal(os.Stdout.Fd()) {
+		color.NoColor = true
+	}
+
+	var jsonOutput bool
 	rootCmd := &cobra.Command{
 		Use:   "sctl",
 		Short: "Saved CLI - Encrypted backups and distributed storage",
@@ -45,6 +53,7 @@ func main() {
 			if err != nil {
 				return err
 			}
+			cliCtx.JSONOutput = jsonOutput
 
 			cmd.SetContext(internal.WithCLIContext(cmd.Context(), cliCtx))
 			return nil
@@ -53,6 +62,7 @@ func main() {
 
 	rootCmd.Version = version
 
+	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	rootCmd.AddCommand(auth.NewAuthCmd())
 	rootCmd.AddCommand(config.NewConfigCmd())
 	rootCmd.AddCommand(workspace.NewWorkspaceCmd())

@@ -1,8 +1,6 @@
 package job
 
 import (
-	"fmt"
-
 	"github.com/fatih/color"
 	"github.com/savedhq/sctl/internal"
 	saved "github.com/savedhq/sdk-go"
@@ -14,17 +12,13 @@ func newJobCreateWorkerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create-worker",
 		Short: "Create a worker job",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
+			internal.CheckErr(cliCtx.Err)
 
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
-			if err != nil {
-				return err
-			}
+			internal.CheckErr(err)
 
 			req := saved.CreateWorkerJobRequest{}
 			if name != "" {
@@ -35,14 +29,15 @@ func newJobCreateWorkerCmd() *cobra.Command {
 			}
 
 			resp, r, err := cliCtx.Client.JobsAPI.CreateWorkerJob(cliCtx.APICtx, workspaceID).CreateWorkerJobRequest(req).Execute()
-			if err != nil {
-				return internal.PrintAPIError(err)
-			}
+			internal.CheckErr(internal.PrintAPIError(err))
 			defer r.Body.Close()
 
-			color.Green("✓ Worker job created")
-			color.Cyan("ID: %s", resp.GetId())
-			return nil
+			if cliCtx.JSONOutput {
+				internal.PrintJSON(resp)
+			} else {
+				color.Green("✓ Worker job created")
+				color.Cyan("ID: %s", resp.GetId())
+			}
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
@@ -56,17 +51,13 @@ func newJobCreateAgentCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create-agent",
 		Short: "Create an agent job",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
+			internal.CheckErr(cliCtx.Err)
 
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
-			if err != nil {
-				return err
-			}
+			internal.CheckErr(err)
 
 			req := saved.CreateAgentJobRequest{}
 			if name != "" {
@@ -80,14 +71,15 @@ func newJobCreateAgentCmd() *cobra.Command {
 			}
 
 			resp, r, err := cliCtx.Client.JobsAPI.CreateAgentJob(cliCtx.APICtx, workspaceID).CreateAgentJobRequest(req).Execute()
-			if err != nil {
-				return internal.PrintAPIError(err)
-			}
+			internal.CheckErr(internal.PrintAPIError(err))
 			defer r.Body.Close()
 
-			color.Green("✓ Agent job created")
-			color.Cyan("ID: %s", resp.GetId())
-			return nil
+			if cliCtx.JSONOutput {
+				internal.PrintJSON(resp)
+			} else {
+				color.Green("✓ Agent job created")
+				color.Cyan("ID: %s", resp.GetId())
+			}
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
@@ -102,17 +94,13 @@ func newJobCreateManualCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create-manual",
 		Short: "Create a manual job",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
+			internal.CheckErr(cliCtx.Err)
 
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
-			if err != nil {
-				return err
-			}
+			internal.CheckErr(err)
 
 			req := saved.CreateManualJobRequest{}
 			if name != "" {
@@ -120,14 +108,15 @@ func newJobCreateManualCmd() *cobra.Command {
 			}
 
 			resp, r, err := cliCtx.Client.JobsAPI.CreateManualJob(cliCtx.APICtx, workspaceID).CreateManualJobRequest(req).Execute()
-			if err != nil {
-				return internal.PrintAPIError(err)
-			}
+			internal.CheckErr(internal.PrintAPIError(err))
 			defer r.Body.Close()
 
-			color.Green("✓ Manual job created")
-			color.Cyan("ID: %s", resp.GetId())
-			return nil
+			if cliCtx.JSONOutput {
+				internal.PrintJSON(resp)
+			} else {
+				color.Green("✓ Manual job created")
+				color.Cyan("ID: %s", resp.GetId())
+			}
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")

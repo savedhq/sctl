@@ -1,8 +1,11 @@
 package internal
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 
+	"github.com/fatih/color"
 	saved "github.com/savedhq/sdk-go"
 )
 
@@ -20,4 +23,19 @@ func PrintAPIError(err error) error {
 	}
 
 	return fmt.Errorf("API Error: %w", err)
+}
+
+func CheckErr(err error) {
+	if err != nil {
+		color.Red("Error: %s", err)
+		os.Exit(1)
+	}
+}
+
+func PrintJSON(v interface{}) {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		CheckErr(fmt.Errorf("failed to marshal JSON: %w", err))
+	}
+	fmt.Println(string(data))
 }

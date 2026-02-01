@@ -19,12 +19,9 @@ func NewConfigCmd() *cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use:   "init",
 		Short: "Initialize configuration file",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := internal.InitConfig(); err != nil {
-				return err
-			}
+		Run: func(cmd *cobra.Command, args []string) {
+			internal.CheckErr(internal.InitConfig())
 			color.Green("✓ Configuration initialized at ~/.sctl/config.yaml")
-			return nil
 		},
 	})
 
@@ -32,14 +29,11 @@ func NewConfigCmd() *cobra.Command {
 		Use:   "set <key> <value>",
 		Short: "Set a configuration value",
 		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
 			key, value := args[0], args[1]
 			viper.Set(key, value)
-			if err := viper.WriteConfig(); err != nil {
-				return err
-			}
+			internal.CheckErr(viper.WriteConfig())
 			color.Green("✓ Set %s = %s", key, value)
-			return nil
 		},
 	})
 
@@ -47,30 +41,35 @@ func NewConfigCmd() *cobra.Command {
 		Use:   "get <key>",
 		Short: "Get a configuration value",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
 			value := viper.Get(args[0])
 			if value == nil {
 				color.Yellow("⚠ %s is not set", args[0])
-				return nil
+				return
 			}
 			fmt.Println(value)
-			return nil
 		},
 	})
 
 	cmd.AddCommand(&cobra.Command{
 		Use:   "list",
 		Short: "List all configuration values",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
+			cliCtx := internal.GetCLIContext(cmd.Context())
+			internal.CheckErr(cliCtx.Err)
+
 			settings := viper.AllSettings()
-			if len(settings) == 0 {
-				color.Yellow("⚠ No configuration set")
-				return nil
+			if cliCtx.JSONOutput {
+				internal.PrintJSON(settings)
+			} else {
+				if len(settings) == 0 {
+					color.Yellow("⚠ No configuration set")
+					return
+				}
+				for key, value := range settings {
+					fmt.Printf("%s = %v\n", key, value)
+				}
 			}
-			for key, value := range settings {
-				fmt.Printf("%s = %v\n", key, value)
-			}
-			return nil
 		},
 	})
 
