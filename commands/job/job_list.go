@@ -26,7 +26,8 @@ func newJobListCmd() *cobra.Command {
 				return err
 			}
 
-			resp, r, err := cliCtx.Client.JobsAPI.ListJobs(cliCtx.APICtx, workspaceID).Execute()
+			var resp []saved.ListJobs200ResponseInner
+			r, err := cliCtx.Client.JobsAPI.ListJobs(cliCtx.APICtx, workspaceID).ExecuteWithBody(&resp)
 			if err != nil {
 				return internal.PrintAPIError(err)
 			}
@@ -74,7 +75,8 @@ func newJobGetCmd() *cobra.Command {
 				return err
 			}
 
-			resp, r, err := cliCtx.Client.JobsAPI.GetJob(cliCtx.APICtx, workspaceID, jobID).Execute()
+			var resp saved.ListJobs200ResponseInner
+			r, err := cliCtx.Client.JobsAPI.GetJob(cliCtx.APICtx, workspaceID, jobID).ExecuteWithBody(&resp)
 			if err != nil {
 				return internal.PrintAPIError(err)
 			}

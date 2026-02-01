@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/fatih/color v1.18.0
 	github.com/google/uuid v1.6.0
-	github.com/savedhq/sdk-go v0.0.0-20260112035812-014c76872587
+	github.com/savedhq/sdk-go v0.0.0-20240523193231-35c0c1632331
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 )
@@ -29,3 +29,5 @@ require (
 	golang.org/x/text v0.28.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
+
+replace github.com/savedhq/sctl => ./

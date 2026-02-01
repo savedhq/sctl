@@ -6,11 +6,12 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/savedhq/sctl/internal"
+	saved "github.com/savedhq/sdk-go"
 	"github.com/spf13/cobra"
 )
 
 func newJobUpdateCmd() *cobra.Command {
-	var workspaceID string
+	var workspaceID, name, schedule string
 	cmd := &cobra.Command{
 		Use:   "update <job_id>",
 		Short: "Update a job",
@@ -32,7 +33,15 @@ func newJobUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			_, r, err := cliCtx.Client.JobsAPI.UpdateJob(cliCtx.APICtx, workspaceID, jobID).Execute()
+			req := saved.UpdateJobRequest{}
+			if name != "" {
+				req.SetName(name)
+			}
+			if schedule != "" {
+				req.SetSchedule(schedule)
+			}
+
+			r, err := cliCtx.Client.JobsAPI.UpdateJob(cliCtx.APICtx, workspaceID, jobID).UpdateJobRequest(req).ExecuteWithBody(nil)
 			if err != nil {
 				return internal.PrintAPIError(err)
 			}
@@ -43,6 +52,8 @@ func newJobUpdateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().StringVarP(&name, "name", "n", "", "Job name")
+	cmd.Flags().StringVarP(&schedule, "schedule", "s", "", "Job schedule (cron format)")
 	return cmd
 }
 
@@ -69,7 +80,7 @@ func newJobDeleteCmd() *cobra.Command {
 				return err
 			}
 
-			r, err := cliCtx.Client.JobsAPI.DeleteJob(cliCtx.APICtx, workspaceID, jobID).Execute()
+			r, err := cliCtx.Client.JobsAPI.DeleteJob(cliCtx.APICtx, workspaceID, jobID).ExecuteWithBody(nil)
 			if err != nil {
 				return internal.PrintAPIError(err)
 			}
@@ -106,7 +117,8 @@ func newJobTriggerCmd() *cobra.Command {
 				return err
 			}
 
-			resp, r, err := cliCtx.Client.JobsAPI.TriggerJob(cliCtx.APICtx, workspaceID, jobID).Execute()
+			var resp saved.TriggerJob202Response
+			r, err := cliCtx.Client.JobsAPI.TriggerJob(cliCtx.APICtx, workspaceID, jobID).ExecuteWithBody(&resp)
 			if err != nil {
 				return internal.PrintAPIError(err)
 			}

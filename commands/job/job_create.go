@@ -34,7 +34,8 @@ func newJobCreateWorkerCmd() *cobra.Command {
 				req.SetSchedule(schedule)
 			}
 
-			resp, r, err := cliCtx.Client.JobsAPI.CreateWorkerJob(cliCtx.APICtx, workspaceID).CreateWorkerJobRequest(req).Execute()
+			var resp saved.CreateWorkerJob201Response
+			r, err := cliCtx.Client.JobsAPI.CreateWorkerJob(cliCtx.APICtx, workspaceID).CreateWorkerJobRequest(req).ExecuteWithBody(&resp)
 			if err != nil {
 				return internal.PrintAPIError(err)
 			}
@@ -79,7 +80,8 @@ func newJobCreateAgentCmd() *cobra.Command {
 				req.SetAgentId(agentID)
 			}
 
-			resp, r, err := cliCtx.Client.JobsAPI.CreateAgentJob(cliCtx.APICtx, workspaceID).CreateAgentJobRequest(req).Execute()
+			var resp saved.CreateAgentJob201Response
+			r, err := cliCtx.Client.JobsAPI.CreateAgentJob(cliCtx.APICtx, workspaceID).CreateAgentJobRequest(req).ExecuteWithBody(&resp)
 			if err != nil {
 				return internal.PrintAPIError(err)
 			}
@@ -119,7 +121,8 @@ func newJobCreateManualCmd() *cobra.Command {
 				req.SetName(name)
 			}
 
-			resp, r, err := cliCtx.Client.JobsAPI.CreateManualJob(cliCtx.APICtx, workspaceID).CreateManualJobRequest(req).Execute()
+			var resp saved.CreateManualJob201Response
+			r, err := cliCtx.Client.JobsAPI.CreateManualJob(cliCtx.APICtx, workspaceID).CreateManualJobRequest(req).ExecuteWithBody(&resp)
 			if err != nil {
 				return internal.PrintAPIError(err)
 			}
