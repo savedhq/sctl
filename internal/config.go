@@ -68,6 +68,15 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+func (c *Config) SetWorkspaceID(id string) {
+	c.WorkspaceID = id
+	viper.Set("workspace_id", id)
+}
+
+func (c *Config) Save() error {
+	return viper.WriteConfig()
+}
+
 func InitConfig() error {
 	home, err := os.UserHomeDir()
 	if err != nil {
