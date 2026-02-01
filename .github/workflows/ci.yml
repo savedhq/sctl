@@ -24,6 +24,13 @@ jobs:
         with:
           go-version: '1.25.5'
 
+      - name: Setup Go workspace
+        run: |
+          git clone https://github.com/savedhq/sdk-go.git local-sdk-go
+          go work init
+          go work use .
+          go work use ./local-sdk-go
+
       - name: Run tests
         run: go test -v ./...
 
