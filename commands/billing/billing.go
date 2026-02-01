@@ -58,7 +58,10 @@ func newBillingInfoCmd() *cobra.Command {
 }
 
 func newBillingUsageCmd() *cobra.Command {
-	var workspaceID string
+	var (
+		workspaceID string
+		jsonOutput  bool
+	)
 	cmd := &cobra.Command{
 		Use:   "usage",
 		Short: "Get usage history",
@@ -77,9 +80,21 @@ func newBillingUsageCmd() *cobra.Command {
 
 			resp, r, err := cliCtx.Client.BillingAPI.GetUsageHistory(cliCtx.APICtx, workspaceID).Execute()
 			if err != nil {
+				if jsonOutput {
+					errorResponse := map[string]string{"error": fmt.Sprintf("API error: %v", err)}
+					data, _ := json.MarshalIndent(errorResponse, "", "  ")
+					fmt.Println(string(data))
+					return nil
+				}
 				return fmt.Errorf("API error: %v", err)
 			}
 			defer r.Body.Close()
+
+			if jsonOutput {
+				data, _ := json.MarshalIndent(resp, "", "  ")
+				fmt.Println(string(data))
+				return nil
+			}
 
 			metrics := resp.GetMetrics()
 			if len(metrics) == 0 {
@@ -98,11 +113,15 @@ func newBillingUsageCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 	return cmd
 }
 
 func newBillingInvoicesCmd() *cobra.Command {
-	var workspaceID string
+	var (
+		workspaceID string
+		jsonOutput  bool
+	)
 	cmd := &cobra.Command{
 		Use:   "invoices",
 		Short: "List invoices",
@@ -121,9 +140,21 @@ func newBillingInvoicesCmd() *cobra.Command {
 
 			resp, r, err := cliCtx.Client.BillingAPI.ListInvoices(cliCtx.APICtx, workspaceID).Execute()
 			if err != nil {
+				if jsonOutput {
+					errorResponse := map[string]string{"error": fmt.Sprintf("API error: %v", err)}
+					data, _ := json.MarshalIndent(errorResponse, "", "  ")
+					fmt.Println(string(data))
+					return nil
+				}
 				return fmt.Errorf("API error: %v", err)
 			}
 			defer r.Body.Close()
+
+			if jsonOutput {
+				data, _ := json.MarshalIndent(resp, "", "  ")
+				fmt.Println(string(data))
+				return nil
+			}
 
 			invoices := resp.GetInvoices()
 			if len(invoices) == 0 {
@@ -142,6 +173,7 @@ func newBillingInvoicesCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 	return cmd
 }
 
@@ -182,6 +214,7 @@ func newBillingCreditsCmd() *cobra.Command {
 	}
 	balanceCmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
 
+	var jsonOutput bool
 	transactionsCmd := &cobra.Command{
 		Use:   "transactions",
 		Short: "List credit transactions",
@@ -200,9 +233,21 @@ func newBillingCreditsCmd() *cobra.Command {
 
 			resp, r, err := cliCtx.Client.BillingAPI.ListCreditTransactions(cliCtx.APICtx, workspaceID).Execute()
 			if err != nil {
+				if jsonOutput {
+					errorResponse := map[string]string{"error": fmt.Sprintf("API error: %v", err)}
+					data, _ := json.MarshalIndent(errorResponse, "", "  ")
+					fmt.Println(string(data))
+					return nil
+				}
 				return fmt.Errorf("API error: %v", err)
 			}
 			defer r.Body.Close()
+
+			if jsonOutput {
+				data, _ := json.MarshalIndent(resp, "", "  ")
+				fmt.Println(string(data))
+				return nil
+			}
 
 			transactions := resp.GetTransactions()
 			if len(transactions) == 0 {
@@ -220,6 +265,7 @@ func newBillingCreditsCmd() *cobra.Command {
 		},
 	}
 	transactionsCmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	transactionsCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 
 	cmd.AddCommand(balanceCmd)
 	cmd.AddCommand(transactionsCmd)
