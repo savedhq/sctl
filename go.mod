@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/fatih/color v1.18.0
 	github.com/google/uuid v1.6.0
-	github.com/savedhq/sdk-go v0.0.0-20240412142433-4921e4823923
+	github.com/savedhq/sdk-go v0.0.0-20260112035812-014c76872587
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 )
