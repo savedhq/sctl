@@ -9,8 +9,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+import (
+	"encoding/json"
+)
+
 func newJobCreateWorkerCmd() *cobra.Command {
 	var workspaceID, name, schedule string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "create-worker",
 		Short: "Create a worker job",
@@ -40,19 +45,29 @@ func newJobCreateWorkerCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Worker job created")
-			color.Cyan("ID: %s", resp.GetId())
+			if jsonOutput {
+				data, err := json.MarshalIndent(resp, "", "  ")
+				if err != nil {
+					return fmt.Errorf("failed to marshal json output: %w", err)
+				}
+				fmt.Println(string(data))
+			} else {
+				color.Green("✓ Worker job created")
+				color.Cyan("ID: %s", resp.GetId())
+			}
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
 	cmd.Flags().StringVarP(&name, "name", "n", "", "Job name")
 	cmd.Flags().StringVarP(&schedule, "schedule", "s", "", "Job schedule (cron format)")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }
 
 func newJobCreateAgentCmd() *cobra.Command {
 	var workspaceID, name, schedule, agentID string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "create-agent",
 		Short: "Create an agent job",
@@ -85,8 +100,16 @@ func newJobCreateAgentCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Agent job created")
-			color.Cyan("ID: %s", resp.GetId())
+			if jsonOutput {
+				data, err := json.MarshalIndent(resp, "", "  ")
+				if err != nil {
+					return fmt.Errorf("failed to marshal json output: %w", err)
+				}
+				fmt.Println(string(data))
+			} else {
+				color.Green("✓ Agent job created")
+				color.Cyan("ID: %s", resp.GetId())
+			}
 			return nil
 		},
 	}
@@ -94,11 +117,13 @@ func newJobCreateAgentCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&name, "name", "n", "", "Job name")
 	cmd.Flags().StringVarP(&schedule, "schedule", "s", "", "Job schedule (cron format)")
 	cmd.Flags().StringVarP(&agentID, "agent", "a", "", "Agent ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }
 
 func newJobCreateManualCmd() *cobra.Command {
 	var workspaceID, name string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "create-manual",
 		Short: "Create a manual job",
@@ -125,12 +150,21 @@ func newJobCreateManualCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Manual job created")
-			color.Cyan("ID: %s", resp.GetId())
+			if jsonOutput {
+				data, err := json.MarshalIndent(resp, "", "  ")
+				if err != nil {
+					return fmt.Errorf("failed to marshal json output: %w", err)
+				}
+				fmt.Println(string(data))
+			} else {
+				color.Green("✓ Manual job created")
+				color.Cyan("ID: %s", resp.GetId())
+			}
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
 	cmd.Flags().StringVarP(&name, "name", "n", "", "Job name")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }

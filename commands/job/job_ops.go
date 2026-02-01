@@ -11,6 +11,7 @@ import (
 
 func newJobUpdateCmd() *cobra.Command {
 	var workspaceID string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "update <job_id>",
 		Short: "Update a job",
@@ -38,16 +39,22 @@ func newJobUpdateCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Job updated")
+			if jsonOutput {
+				fmt.Println(`{"status": "success", "message": "Job updated"}`)
+			} else {
+				color.Green("✓ Job updated")
+			}
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }
 
 func newJobDeleteCmd() *cobra.Command {
 	var workspaceID string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "delete <job_id>",
 		Short: "Delete a job",
@@ -75,16 +82,22 @@ func newJobDeleteCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Job deleted")
+			if jsonOutput {
+				fmt.Println(`{"status": "success", "message": "Job deleted"}`)
+			} else {
+				color.Green("✓ Job deleted")
+			}
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }
 
 func newJobTriggerCmd() *cobra.Command {
 	var workspaceID string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "trigger <job_id>",
 		Short: "Trigger a job",
@@ -112,12 +125,19 @@ func newJobTriggerCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Job triggered")
-			data, _ := json.MarshalIndent(resp, "", "  ")
-			fmt.Println(string(data))
+			if jsonOutput {
+				data, err := json.MarshalIndent(resp, "", "  ")
+				if err != nil {
+					return fmt.Errorf("failed to marshal json output: %w", err)
+				}
+				fmt.Println(string(data))
+			} else {
+				color.Green("✓ Job triggered")
+			}
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }

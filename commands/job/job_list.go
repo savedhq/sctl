@@ -11,6 +11,7 @@ import (
 
 func newJobListCmd() *cobra.Command {
 	var workspaceID string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all jobs",
@@ -32,6 +33,15 @@ func newJobListCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
+			if jsonOutput {
+				data, err := json.MarshalIndent(resp, "", "  ")
+				if err != nil {
+					return fmt.Errorf("failed to marshal json output: %w", err)
+				}
+				fmt.Println(string(data))
+				return nil
+			}
+
 			if len(resp) == 0 {
 				color.Yellow("⚠ No jobs found")
 				return nil
@@ -47,6 +57,7 @@ func newJobListCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }
 
@@ -81,7 +92,10 @@ func newJobGetCmd() *cobra.Command {
 			defer r.Body.Close()
 
 			if jsonOutput {
-				data, _ := json.MarshalIndent(resp, "", "  ")
+				data, err := json.MarshalIndent(resp, "", "  ")
+				if err != nil {
+					return fmt.Errorf("failed to marshal json output: %w", err)
+				}
 				fmt.Println(string(data))
 			} else {
 				color.Cyan("ID: %s", resp.GetId())
