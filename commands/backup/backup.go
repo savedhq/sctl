@@ -26,11 +26,12 @@ func NewBackupCmd() *cobra.Command {
 }
 
 func newBackupListCmd() *cobra.Command {
-	var workspaceID, jobID string
+	var workspaceID string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "list <job_id>",
 		Short: "List backups for a job",
-		Args:  cobra.MaximumNArgs(1),
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
 			if cliCtx == nil {
@@ -44,18 +45,19 @@ func newBackupListCmd() *cobra.Command {
 				return fmt.Errorf("workspace_id required (use --workspace or set in config)")
 			}
 
-			if len(args) > 0 {
-				jobID = args[0]
-			}
-			if jobID == "" {
-				return fmt.Errorf("job_id required")
-			}
+			jobID := args[0]
 
 			resp, r, err := cliCtx.Client.BackupsAPI.ListBackups(cliCtx.APICtx, workspaceID, jobID).Execute()
 			if err != nil {
 				return fmt.Errorf("API error: %v", err)
 			}
 			defer r.Body.Close()
+
+			if jsonOutput {
+				data, _ := json.MarshalIndent(resp, "", "  ")
+				fmt.Println(string(data))
+				return nil
+			}
 
 			if len(resp) == 0 {
 				color.Yellow("⚠ No backups found")
@@ -71,12 +73,12 @@ func newBackupListCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
-	cmd.Flags().StringVarP(&jobID, "job", "j", "", "Job ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }
 
 func newBackupGetCmd() *cobra.Command {
-	var workspaceID, jobID string
+	var workspaceID string
 	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "get <job_id> <backup_id>",
@@ -95,7 +97,7 @@ func newBackupGetCmd() *cobra.Command {
 				return fmt.Errorf("workspace_id required (use --workspace or set in config)")
 			}
 
-			jobID = args[0]
+			jobID := args[0]
 			backupID := args[1]
 
 			resp, r, err := cliCtx.Client.BackupsAPI.GetBackup(cliCtx.APICtx, workspaceID, jobID, backupID).Execute()
@@ -122,6 +124,7 @@ func newBackupGetCmd() *cobra.Command {
 
 func newBackupDeleteCmd() *cobra.Command {
 	var workspaceID string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "delete <job_id> <backup_id>",
 		Short: "Delete a backup",
@@ -148,16 +151,24 @@ func newBackupDeleteCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Backup deleted")
+			if jsonOutput {
+				data := map[string]string{"status": "deleted", "id": backupID}
+				jsonData, _ := json.MarshalIndent(data, "", "  ")
+				fmt.Println(string(jsonData))
+			} else {
+				color.Green("✓ Backup deleted")
+			}
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }
 
 func newBackupRequestCmd() *cobra.Command {
-	var workspaceID, jobID string
+	var workspaceID string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "request <job_id>",
 		Short: "Request a new backup",
@@ -175,7 +186,7 @@ func newBackupRequestCmd() *cobra.Command {
 				return fmt.Errorf("workspace_id required (use --workspace or set in config)")
 			}
 
-			jobID = args[0]
+			jobID := args[0]
 
 			resp, r, err := cliCtx.Client.JobOperationsAPI.RequestBackup(cliCtx.APICtx, workspaceID, jobID).Execute()
 			if err != nil {
@@ -183,18 +194,25 @@ func newBackupRequestCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Backup requested")
-			data, _ := json.MarshalIndent(resp, "", "  ")
-			fmt.Println(string(data))
+			if jsonOutput {
+				data, _ := json.MarshalIndent(resp, "", "  ")
+				fmt.Println(string(data))
+			} else {
+				color.Green("✓ Backup requested")
+				color.Cyan("ID: %s", resp.GetId())
+				fmt.Printf("Status: %s\n", resp.GetStatus())
+			}
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }
 
 func newBackupDownloadCmd() *cobra.Command {
 	var workspaceID string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "download <job_id> <backup_id>",
 		Short: "Download a backup",
@@ -221,12 +239,17 @@ func newBackupDownloadCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Backup download URL generated")
-			data, _ := json.MarshalIndent(resp, "", "  ")
-			fmt.Println(string(data))
+			if jsonOutput {
+				data, _ := json.MarshalIndent(resp, "", "  ")
+				fmt.Println(string(data))
+			} else {
+				color.Green("✓ Backup download URL generated")
+				fmt.Println(resp.GetUrl())
+			}
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }
