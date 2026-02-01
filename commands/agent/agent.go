@@ -29,6 +29,7 @@ func NewAgentCmd() *cobra.Command {
 
 func newAgentListCmd() *cobra.Command {
 	var workspaceID string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all agents",
@@ -50,6 +51,12 @@ func newAgentListCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
+			if jsonOutput {
+				data, _ := json.MarshalIndent(resp, "", "  ")
+				fmt.Println(string(data))
+				return nil
+			}
+
 			if len(resp) == 0 {
 				color.Yellow("⚠ No agents found")
 				return nil
@@ -64,6 +71,7 @@ func newAgentListCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }
 
@@ -115,6 +123,7 @@ func newAgentGetCmd() *cobra.Command {
 
 func newAgentCreateCmd() *cobra.Command {
 	var workspaceID, name string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a new agent",
@@ -141,18 +150,25 @@ func newAgentCreateCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Agent created")
-			color.Cyan("ID: %s", resp.GetId())
+			if jsonOutput {
+				data, _ := json.MarshalIndent(resp, "", "  ")
+				fmt.Println(string(data))
+			} else {
+				color.Green("✓ Agent created")
+				color.Cyan("ID: %s", resp.GetId())
+			}
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
 	cmd.Flags().StringVarP(&name, "name", "n", "", "Agent name")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }
 
 func newAgentUpdateCmd() *cobra.Command {
-	var workspaceID string
+	var workspaceID, name string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "update <agent_id>",
 		Short: "Update an agent",
@@ -174,22 +190,35 @@ func newAgentUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			_, r, err := cliCtx.Client.AgentsAPI.UpdateAgent(cliCtx.APICtx, workspaceID, agentID).Execute()
+			req := saved.UpdateAgentRequest{}
+			if name != "" {
+				req.SetName(name)
+			}
+
+			resp, r, err := cliCtx.Client.AgentsAPI.UpdateAgent(cliCtx.APICtx, workspaceID, agentID).UpdateAgentRequest(req).Execute()
 			if err != nil {
 				return internal.PrintAPIError(err)
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Agent updated")
+			if jsonOutput {
+				data, _ := json.MarshalIndent(resp, "", "  ")
+				fmt.Println(string(data))
+			} else {
+				color.Green("✓ Agent updated")
+			}
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().StringVarP(&name, "name", "n", "", "New agent name")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }
 
 func newAgentDeleteCmd() *cobra.Command {
 	var workspaceID string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "delete <agent_id>",
 		Short: "Delete an agent",
@@ -217,11 +246,16 @@ func newAgentDeleteCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Agent deleted")
+			if jsonOutput {
+				fmt.Println(`{"status": "ok"}`)
+			} else {
+				color.Green("✓ Agent deleted")
+			}
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }
 
