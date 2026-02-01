@@ -2,12 +2,43 @@ package config
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/savedhq/sctl/internal"
+	"github.com/savedhq/sctl/internal/render"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
+
+// ConfigValue represents a single configuration value for rendering.
+type ConfigValue struct {
+	Key   string      `json:"key"`
+	Value interface{} `json:"value"`
+}
+
+// String implements the Stringer interface for ConfigValue.
+func (c ConfigValue) String() string {
+	return fmt.Sprintf("%v", c.Value)
+}
+
+// ConfigSettings represents all configuration settings for rendering.
+type ConfigSettings map[string]interface{}
+
+// String implements the Stringer interface for ConfigSettings.
+func (s ConfigSettings) String() string {
+	var b strings.Builder
+	keys := make([]string, 0, len(s))
+	for k := range s {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		b.WriteString(fmt.Sprintf("%s = %v\n", k, s[k]))
+	}
+	return strings.TrimSuffix(b.String(), "\n")
+}
 
 func NewConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -23,7 +54,7 @@ func NewConfigCmd() *cobra.Command {
 			if err := internal.InitConfig(); err != nil {
 				return err
 			}
-			color.Green("✓ Configuration initialized at ~/.sctl/config.yaml")
+			render.Message(color.GreenString("✓ Configuration initialized at ~/.sctl/config.yaml"))
 			return nil
 		},
 	})
@@ -38,7 +69,7 @@ func NewConfigCmd() *cobra.Command {
 			if err := viper.WriteConfig(); err != nil {
 				return err
 			}
-			color.Green("✓ Set %s = %s", key, value)
+			render.Message(color.GreenString("✓ Set %s = %s", key, value))
 			return nil
 		},
 	})
@@ -48,12 +79,13 @@ func NewConfigCmd() *cobra.Command {
 		Short: "Get a configuration value",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			value := viper.Get(args[0])
+			key := args[0]
+			value := viper.Get(key)
 			if value == nil {
-				color.Yellow("⚠ %s is not set", args[0])
+				render.Message(color.YellowString("⚠ %s is not set", key))
 				return nil
 			}
-			fmt.Println(value)
+			render.Object(ConfigValue{Key: key, Value: value})
 			return nil
 		},
 	})
@@ -64,12 +96,10 @@ func NewConfigCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			settings := viper.AllSettings()
 			if len(settings) == 0 {
-				color.Yellow("⚠ No configuration set")
+				render.Message(color.YellowString("⚠ No configuration set"))
 				return nil
 			}
-			for key, value := range settings {
-				fmt.Printf("%s = %v\n", key, value)
-			}
+			render.Object(ConfigSettings(settings))
 			return nil
 		},
 	})

@@ -3,11 +3,90 @@ package billing
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/savedhq/sctl/internal"
+	"github.com/savedhq/sctl/internal/render"
+	saved "github.com/savedhq/sdk-go"
 	"github.com/spf13/cobra"
 )
+
+// BillingInfo is a wrapper for the saved.GetBillingInfo200Response type for rendering.
+type BillingInfo saved.GetBillingInfo200Response
+
+// String implements the Stringer interface for BillingInfo.
+func (b BillingInfo) String() string {
+	data, _ := json.MarshalIndent(b, "", "  ")
+	return string(data)
+}
+
+// UsageHistory is a wrapper for the saved.GetUsageHistory200Response type for rendering.
+type UsageHistory saved.GetUsageHistory200Response
+
+// String implements the Stringer interface for UsageHistory.
+func (u UsageHistory) String() string {
+	var b strings.Builder
+	for _, metric := range u.Metrics {
+		b.WriteString(fmt.Sprintf("%s %s\n  Type: %s\n  Value: %d %s\n  Cost: $%.2f\n  Created: %s\n\n",
+			color.CyanString("Activity:"),
+			metric.ActivityName,
+			metric.MetricType,
+			metric.Value,
+			metric.Unit,
+			metric.Cost,
+			metric.CreatedAt.Format(time.RFC3339),
+		))
+	}
+	return strings.TrimSuffix(b.String(), "\n\n")
+}
+
+// Invoices is a wrapper for the saved.ListInvoices200Response type for rendering.
+type Invoices saved.ListInvoices200Response
+
+// String implements the Stringer interface for Invoices.
+func (i Invoices) String() string {
+	var b strings.Builder
+	for _, inv := range i.Invoices {
+		b.WriteString(fmt.Sprintf("%s %s\n  Number: %s\n  Amount Due: %d %s\n  Status: %s\n  Total: %d\n\n",
+			color.CyanString("ID:"),
+			inv.Id,
+			inv.Number,
+			inv.AmountDue,
+			inv.Currency,
+			inv.Status,
+			inv.Total,
+		))
+	}
+	return strings.TrimSuffix(b.String(), "\n\n")
+}
+
+// CreditBalance is a wrapper for the saved.ConfirmCreditPurchase200Response type for rendering.
+type CreditBalance saved.ConfirmCreditPurchase200Response
+
+// String implements the Stringer interface for CreditBalance.
+func (c CreditBalance) String() string {
+	return fmt.Sprintf("Balance: %d", c.Balance)
+}
+
+// CreditTransactions is a wrapper for the saved.ListCreditTransactions200Response type for rendering.
+type CreditTransactions saved.ListCreditTransactions200Response
+
+// String implements the Stringer interface for CreditTransactions.
+func (c CreditTransactions) String() string {
+	var b strings.Builder
+	for _, tx := range c.Transactions {
+		b.WriteString(fmt.Sprintf("%s %s\n  Amount: %d\n  Type: %s\n  Created: %s\n\n",
+			color.CyanString("ID:"),
+			tx.Id,
+			tx.Amount,
+			tx.Type,
+			tx.CreatedAt.Format(time.RFC3339),
+		))
+	}
+	return strings.TrimSuffix(b.String(), "\n\n")
+}
 
 func NewBillingCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -31,25 +110,19 @@ func newBillingInfoCmd() *cobra.Command {
 		Short: "Get billing information",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
-			if workspaceID == "" {
-				workspaceID = cliCtx.GetWorkspaceID()
-			}
-			if workspaceID == "" {
-				return fmt.Errorf("workspace_id required (use --workspace or set in config)")
+			var err error
+			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
+			if err != nil {
+				return err
 			}
 
 			resp, r, err := cliCtx.Client.BillingAPI.GetBillingInfo(cliCtx.APICtx, workspaceID).Execute()
 			if err != nil {
-				return fmt.Errorf("API error: %v", err)
+				return internal.PrintAPIError(err)
 			}
 			defer r.Body.Close()
 
-			data, _ := json.MarshalIndent(resp, "", "  ")
-			fmt.Println(string(data))
+			render.Object(BillingInfo(*resp))
 			return nil
 		},
 	}
@@ -64,36 +137,25 @@ func newBillingUsageCmd() *cobra.Command {
 		Short: "Get usage history",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
-			if workspaceID == "" {
-				workspaceID = cliCtx.GetWorkspaceID()
-			}
-			if workspaceID == "" {
-				return fmt.Errorf("workspace_id required (use --workspace or set in config)")
+			var err error
+			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
+			if err != nil {
+				return err
 			}
 
 			resp, r, err := cliCtx.Client.BillingAPI.GetUsageHistory(cliCtx.APICtx, workspaceID).Execute()
 			if err != nil {
-				return fmt.Errorf("API error: %v", err)
+				return internal.PrintAPIError(err)
 			}
 			defer r.Body.Close()
 
 			metrics := resp.GetMetrics()
 			if len(metrics) == 0 {
-				color.Yellow("⚠ No usage data found")
+				render.Message(color.YellowString("⚠ No usage data found"))
 				return nil
 			}
 
-			for _, metric := range metrics {
-				color.Cyan("Activity: %s", metric.GetActivityName())
-				fmt.Printf("  Type: %s\n", metric.GetMetricType())
-				fmt.Printf("  Value: %d %s\n", metric.GetValue(), metric.GetUnit())
-				fmt.Printf("  Cost: $%.2f\n", metric.GetCost())
-				fmt.Printf("  Created: %s\n\n", metric.GetCreatedAt().Format("2006-01-02 15:04:05"))
-			}
+			render.Object(UsageHistory(*resp))
 			return nil
 		},
 	}
@@ -108,36 +170,25 @@ func newBillingInvoicesCmd() *cobra.Command {
 		Short: "List invoices",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
-			if workspaceID == "" {
-				workspaceID = cliCtx.GetWorkspaceID()
-			}
-			if workspaceID == "" {
-				return fmt.Errorf("workspace_id required (use --workspace or set in config)")
+			var err error
+			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
+			if err != nil {
+				return err
 			}
 
 			resp, r, err := cliCtx.Client.BillingAPI.ListInvoices(cliCtx.APICtx, workspaceID).Execute()
 			if err != nil {
-				return fmt.Errorf("API error: %v", err)
+				return internal.PrintAPIError(err)
 			}
 			defer r.Body.Close()
 
 			invoices := resp.GetInvoices()
 			if len(invoices) == 0 {
-				color.Yellow("⚠ No invoices found")
+				render.Message(color.YellowString("⚠ No invoices found"))
 				return nil
 			}
 
-			for _, inv := range invoices {
-				color.Cyan("ID: %s", inv.GetId())
-				fmt.Printf("  Number: %s\n", inv.GetNumber())
-				fmt.Printf("  Amount Due: %d %s\n", inv.GetAmountDue(), inv.GetCurrency())
-				fmt.Printf("  Status: %s\n", inv.GetStatus())
-				fmt.Printf("  Total: %d\n\n", inv.GetTotal())
-			}
+			render.Object(Invoices(*resp))
 			return nil
 		},
 	}
@@ -158,25 +209,19 @@ func newBillingCreditsCmd() *cobra.Command {
 		Short: "Get credit balance",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
-			if workspaceID == "" {
-				workspaceID = cliCtx.GetWorkspaceID()
-			}
-			if workspaceID == "" {
-				return fmt.Errorf("workspace_id required (use --workspace or set in config)")
+			var err error
+			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
+			if err != nil {
+				return err
 			}
 
 			resp, r, err := cliCtx.Client.BillingAPI.GetCreditBalance(cliCtx.APICtx, workspaceID).Execute()
 			if err != nil {
-				return fmt.Errorf("API error: %v", err)
+				return internal.PrintAPIError(err)
 			}
 			defer r.Body.Close()
 
-			data, _ := json.MarshalIndent(resp, "", "  ")
-			fmt.Println(string(data))
+			render.Object(CreditBalance(*resp))
 			return nil
 		},
 	}
@@ -187,35 +232,25 @@ func newBillingCreditsCmd() *cobra.Command {
 		Short: "List credit transactions",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
-			if workspaceID == "" {
-				workspaceID = cliCtx.GetWorkspaceID()
-			}
-			if workspaceID == "" {
-				return fmt.Errorf("workspace_id required (use --workspace or set in config)")
+			var err error
+			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
+			if err != nil {
+				return err
 			}
 
 			resp, r, err := cliCtx.Client.BillingAPI.ListCreditTransactions(cliCtx.APICtx, workspaceID).Execute()
 			if err != nil {
-				return fmt.Errorf("API error: %v", err)
+				return internal.PrintAPIError(err)
 			}
 			defer r.Body.Close()
 
 			transactions := resp.GetTransactions()
 			if len(transactions) == 0 {
-				color.Yellow("⚠ No transactions found")
+				render.Message(color.YellowString("⚠ No transactions found"))
 				return nil
 			}
 
-			for _, tx := range transactions {
-				color.Cyan("ID: %s", tx.GetId())
-				fmt.Printf("  Amount: %d\n", tx.GetAmount())
-				fmt.Printf("  Type: %s\n", tx.GetType())
-				fmt.Printf("  Created: %s\n\n", tx.GetCreatedAt().Format("2006-01-02 15:04:05"))
-			}
+			render.Object(CreditTransactions(*resp))
 			return nil
 		},
 	}

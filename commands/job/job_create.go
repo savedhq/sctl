@@ -1,10 +1,9 @@
 package job
 
 import (
-	"fmt"
-
 	"github.com/fatih/color"
 	"github.com/savedhq/sctl/internal"
+	"github.com/savedhq/sctl/internal/render"
 	saved "github.com/savedhq/sdk-go"
 	"github.com/spf13/cobra"
 )
@@ -16,10 +15,6 @@ func newJobCreateWorkerCmd() *cobra.Command {
 		Short: "Create a worker job",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
 			if err != nil {
@@ -40,8 +35,7 @@ func newJobCreateWorkerCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Worker job created")
-			color.Cyan("ID: %s", resp.GetId())
+			render.Message(color.GreenString("✓ Worker job created: %s", resp.GetId()))
 			return nil
 		},
 	}
@@ -58,10 +52,6 @@ func newJobCreateAgentCmd() *cobra.Command {
 		Short: "Create an agent job",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
 			if err != nil {
@@ -85,8 +75,7 @@ func newJobCreateAgentCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Agent job created")
-			color.Cyan("ID: %s", resp.GetId())
+			render.Message(color.GreenString("✓ Agent job created: %s", resp.GetId()))
 			return nil
 		},
 	}
@@ -104,10 +93,6 @@ func newJobCreateManualCmd() *cobra.Command {
 		Short: "Create a manual job",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
 			if err != nil {
@@ -125,8 +110,7 @@ func newJobCreateManualCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Manual job created")
-			color.Cyan("ID: %s", resp.GetId())
+			render.Message(color.GreenString("✓ Manual job created: %s", resp.GetId()))
 			return nil
 		},
 	}

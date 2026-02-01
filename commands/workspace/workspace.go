@@ -1,13 +1,45 @@
 package workspace
 
 import (
-	"encoding/json"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/fatih/color"
+	saved "github.com/savedhq/sdk-go"
 	"github.com/savedhq/sctl/internal"
+	"github.com/savedhq/sctl/internal/render"
 	"github.com/spf13/cobra"
 )
+
+// Workspace is a wrapper for the saved.ListWorkspaces200ResponseInner type for rendering.
+type Workspace saved.ListWorkspaces200ResponseInner
+
+// String implements the Stringer interface for Workspace.
+func (w Workspace) String() string {
+	return fmt.Sprintf("%s %s (%s)",
+		color.CyanString("ID:"),
+		w.Id,
+		w.Name,
+	)
+}
+
+// Workspaces is a wrapper for a slice of saved.ListWorkspaces200ResponseInner for rendering.
+type Workspaces []saved.ListWorkspaces200ResponseInner
+
+// String implements the Stringer interface for Workspaces.
+func (w Workspaces) String() string {
+	var b strings.Builder
+	for _, ws := range w {
+		b.WriteString(fmt.Sprintf("%s %s\n  Name: %s\n  Created: %s\n\n",
+			color.CyanString("ID:"),
+			ws.Id,
+			ws.Name,
+			ws.CreatedAt.Format(time.RFC3339),
+		))
+	}
+	return strings.TrimSuffix(b.String(), "\n\n")
+}
 
 func NewWorkspaceCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -31,43 +63,30 @@ func newWorkspaceListCmd() *cobra.Command {
 		Short: "List all workspaces",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
 			resp, r, err := cliCtx.Client.WorkspacesAPI.ListWorkspaces(cliCtx.APICtx).Execute()
 			if err != nil {
-				return fmt.Errorf("API error: %v", err)
+				return internal.PrintAPIError(err)
 			}
 			defer r.Body.Close()
 
 			if len(resp) == 0 {
-				color.Yellow("⚠ No workspaces found")
+				render.Message(color.YellowString("⚠ No workspaces found"))
 				return nil
 			}
 
-			for _, ws := range resp {
-				color.Cyan("ID: %s", ws.GetId())
-				fmt.Printf("  Name: %s\n", ws.GetName())
-				fmt.Printf("  Created: %s\n\n", ws.GetCreatedAt().Format("2006-01-02 15:04:05"))
-			}
+			render.Object(Workspaces(resp))
 			return nil
 		},
 	}
 }
 
 func newWorkspaceGetCmd() *cobra.Command {
-	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "get <workspace_id>",
 		Short: "Get workspace details",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
 			id, err := cliCtx.ResolveWorkspaceID(args[0])
 			if err != nil {
 				return err
@@ -75,22 +94,14 @@ func newWorkspaceGetCmd() *cobra.Command {
 
 			resp, r, err := cliCtx.Client.WorkspacesAPI.GetWorkspace(cliCtx.APICtx, id).Execute()
 			if err != nil {
-				return fmt.Errorf("API error: %v", err)
+				return internal.PrintAPIError(err)
 			}
 			defer r.Body.Close()
 
-			if jsonOutput {
-				data, _ := json.MarshalIndent(resp, "", "  ")
-				fmt.Println(string(data))
-			} else {
-				color.Cyan("ID: %s", resp.GetId())
-				fmt.Printf("Name: %s\n", resp.GetName())
-				fmt.Printf("Created: %s\n", resp.GetCreatedAt().Format("2006-01-02 15:04:05"))
-			}
+			render.Object(Workspace(*resp))
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }
 
@@ -101,51 +112,55 @@ func newWorkspaceCreateCmd() *cobra.Command {
 		Short: "Create a new workspace",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
+			req := cliCtx.Client.WorkspacesAPI.CreateWorkspace(cliCtx.APICtx)
+			if name != "" {
+				req = req.CreateWorkspaceRequest(saved.CreateWorkspaceRequest{Name: name})
 			}
 
-			resp, r, err := cliCtx.Client.WorkspacesAPI.CreateWorkspace(cliCtx.APICtx).Execute()
+			resp, r, err := req.Execute()
 			if err != nil {
-				return fmt.Errorf("API error: %v", err)
+				return internal.PrintAPIError(err)
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Workspace created")
-			color.Cyan("ID: %s", resp.GetId())
+			render.Message(color.GreenString("✓ Workspace created: %s", resp.GetId()))
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&name, "name", "n", "", "Workspace name")
+	cmd.Flags().StringVarP(&name, "name", "n", "", "Workspace name (optional)")
 	return cmd
 }
 
 func newWorkspaceUpdateCmd() *cobra.Command {
-	return &cobra.Command{
+	var name string
+	cmd := &cobra.Command{
 		Use:   "update <workspace_id>",
 		Short: "Update a workspace",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
 			id, err := cliCtx.ResolveWorkspaceID(args[0])
 			if err != nil {
 				return err
 			}
 
-			_, r, err := cliCtx.Client.WorkspacesAPI.UpdateWorkspace(cliCtx.APICtx, id).Execute()
+			req := cliCtx.Client.WorkspacesAPI.UpdateWorkspace(cliCtx.APICtx, id)
+			if name != "" {
+				req = req.UpdateWorkspaceRequest(saved.UpdateWorkspaceRequest{Name: name})
+			}
+
+			_, r, err := req.Execute()
 			if err != nil {
-				return fmt.Errorf("API error: %v", err)
+				return internal.PrintAPIError(err)
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Workspace updated")
+			render.Message(color.GreenString("✓ Workspace updated"))
 			return nil
 		},
 	}
+	cmd.Flags().StringVarP(&name, "name", "n", "", "New workspace name")
+	return cmd
 }
 
 func newWorkspaceDeleteCmd() *cobra.Command {
@@ -155,10 +170,6 @@ func newWorkspaceDeleteCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
 			id, err := cliCtx.ResolveWorkspaceID(args[0])
 			if err != nil {
 				return err
@@ -166,11 +177,11 @@ func newWorkspaceDeleteCmd() *cobra.Command {
 
 			r, err := cliCtx.Client.WorkspacesAPI.DeleteWorkspace(cliCtx.APICtx, id).Execute()
 			if err != nil {
-				return fmt.Errorf("API error: %v", err)
+				return internal.PrintAPIError(err)
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Workspace deleted")
+			render.Message(color.GreenString("✓ Workspace deleted"))
 			return nil
 		},
 	}

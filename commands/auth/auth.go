@@ -6,6 +6,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/savedhq/sctl/internal"
+	"github.com/savedhq/sctl/internal/render"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -77,7 +78,7 @@ func newAuthLoginCmd() *cobra.Command {
 
 			// Dynamic Config Fetch
 			if issuer == "" || clientID == "" || audience == "" {
-				color.Cyan("Fetching authentication configuration from %s...", serverURL)
+				render.Message(color.CyanString("Fetching authentication configuration from %s...", serverURL))
 				authConfig, err := internal.FetchAuthConfig(serverURL)
 				if err != nil {
 					return fmt.Errorf("failed to fetch auth config (and no flags provided): %w", err)
@@ -85,7 +86,7 @@ func newAuthLoginCmd() *cobra.Command {
 				issuer = authConfig.Issuer
 				clientID = authConfig.ClientID
 				audience = authConfig.Audience
-				color.Green("✓ Configuration fetched")
+				render.Message(color.GreenString("✓ Configuration fetched"))
 			}
 
 			if issuer == "" || clientID == "" || audience == "" {
@@ -115,8 +116,8 @@ func newAuthLoginCmd() *cobra.Command {
 				return fmt.Errorf("failed to save token: %w", err)
 			}
 
-			color.Green("✓ Logged in successfully")
-			color.Cyan("Token and auth config saved to ~/.sctl/config.yaml")
+			render.Message(color.GreenString("✓ Logged in successfully"))
+			render.Message(color.CyanString("Token and auth config saved to ~/.sctl/config.yaml"))
 
 			return nil
 		},
@@ -150,10 +151,36 @@ func newAuthLogoutCmd() *cobra.Command {
 				return fmt.Errorf("failed to clear credentials: %w", err)
 			}
 
-			color.Green("✓ Logged out successfully")
+			render.Message(color.GreenString("✓ Logged out successfully"))
 			return nil
 		},
 	}
+}
+
+// AuthStatus represents the authentication status.
+type AuthStatus struct {
+	LoggedIn bool   `json:"logged_in"`
+	Message  string `json:"message"`
+	Token    string `json:"token,omitempty"`
+}
+
+// String implements the Stringer interface for AuthStatus.
+func (s AuthStatus) String() string {
+	if !s.LoggedIn {
+		return fmt.Sprintf("%s %s\n%s",
+			color.YellowString("⚠"),
+			s.Message,
+			color.CyanString("Run 'sctl auth login' to authenticate"),
+		)
+	}
+	tokenStr := ""
+	if s.Token != "" {
+		tokenLen := len(s.Token)
+		if tokenLen > 20 {
+			tokenStr = fmt.Sprintf("\nToken: %s...%s", s.Token[:8], s.Token[tokenLen-8:])
+		}
+	}
+	return fmt.Sprintf("%s %s%s", color.GreenString("✓"), s.Message, tokenStr)
 }
 
 func newAuthStatusCmd() *cobra.Command {
@@ -169,17 +196,18 @@ func newAuthStatusCmd() *cobra.Command {
 			apiKey := viper.GetString("api_key")
 
 			if apiKey == "" {
-				color.Yellow("⚠ Not logged in")
-				color.Cyan("Run 'sctl auth login' to authenticate")
+				render.Object(AuthStatus{
+					LoggedIn: false,
+					Message:  "Not logged in",
+				})
 				return nil
 			}
 
-			color.Green("✓ Logged in")
-
-			tokenLen := len(apiKey)
-			if tokenLen > 20 {
-				fmt.Printf("Token: %s...%s\n", apiKey[:8], apiKey[tokenLen-8:])
-			}
+			render.Object(AuthStatus{
+				LoggedIn: true,
+				Message:  "Logged in",
+				Token:    apiKey,
+			})
 
 			return nil
 		},

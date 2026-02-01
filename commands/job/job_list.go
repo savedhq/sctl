@@ -1,13 +1,45 @@
 package job
 
 import (
-	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/savedhq/sctl/internal"
+	"github.com/savedhq/sctl/internal/render"
+	saved "github.com/savedhq/sdk-go"
 	"github.com/spf13/cobra"
 )
+
+// Job is a wrapper for the saved.ListJobs200ResponseInner type for rendering.
+type Job saved.ListJobs200ResponseInner
+
+// String implements the Stringer interface for Job.
+func (j Job) String() string {
+	return fmt.Sprintf("%s %s (%s)",
+		color.CyanString("ID:"),
+		j.Id,
+		j.Name,
+	)
+}
+
+// Jobs is a wrapper for a slice of saved.ListJobs200ResponseInner for rendering.
+type Jobs []saved.ListJobs200ResponseInner
+
+// String implements the Stringer interface for Jobs.
+func (j Jobs) String() string {
+	var b strings.Builder
+	for _, job := range j {
+		b.WriteString(fmt.Sprintf("%s %s\n  Name: %s\n  Type: %s\n  Enabled: %v\n\n",
+			color.CyanString("ID:"),
+			job.Id,
+			job.Name,
+			job.Type,
+			job.Enabled,
+		))
+	}
+	return strings.TrimSuffix(b.String(), "\n\n")
+}
 
 func newJobListCmd() *cobra.Command {
 	var workspaceID string
@@ -16,10 +48,6 @@ func newJobListCmd() *cobra.Command {
 		Short: "List all jobs",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
 			if err != nil {
@@ -33,16 +61,11 @@ func newJobListCmd() *cobra.Command {
 			defer r.Body.Close()
 
 			if len(resp) == 0 {
-				color.Yellow("⚠ No jobs found")
+				render.Message(color.YellowString("⚠ No jobs found"))
 				return nil
 			}
 
-			for _, job := range resp {
-				color.Cyan("ID: %s", job.GetId())
-				fmt.Printf("  Name: %s\n", job.GetName())
-				fmt.Printf("  Type: %s\n", job.GetType())
-				fmt.Printf("  Enabled: %v\n\n", job.GetEnabled())
-			}
+			render.Object(Jobs(resp))
 			return nil
 		},
 	}
@@ -52,17 +75,12 @@ func newJobListCmd() *cobra.Command {
 
 func newJobGetCmd() *cobra.Command {
 	var workspaceID string
-	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "get <job_id>",
 		Short: "Get job details",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
 			if err != nil {
@@ -80,19 +98,10 @@ func newJobGetCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			if jsonOutput {
-				data, _ := json.MarshalIndent(resp, "", "  ")
-				fmt.Println(string(data))
-			} else {
-				color.Cyan("ID: %s", resp.GetId())
-				fmt.Printf("Name: %s\n", resp.GetName())
-				fmt.Printf("Type: %s\n", resp.GetType())
-				fmt.Printf("Enabled: %v\n", resp.GetEnabled())
-			}
+			render.Object(Job(*resp))
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
-	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }

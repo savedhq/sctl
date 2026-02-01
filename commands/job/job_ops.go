@@ -2,25 +2,32 @@ package job
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/fatih/color"
 	"github.com/savedhq/sctl/internal"
+	"github.com/savedhq/sctl/internal/render"
+	saved "github.com/savedhq/sdk-go"
 	"github.com/spf13/cobra"
 )
 
+// JobTrigger is a wrapper for the saved.TriggerJob202Response type for rendering.
+type JobTrigger saved.TriggerJob202Response
+
+// String implements the Stringer interface for JobTrigger.
+func (t JobTrigger) String() string {
+	data, _ := json.MarshalIndent(t, "", "  ")
+	return string(data)
+}
+
 func newJobUpdateCmd() *cobra.Command {
-	var workspaceID string
+	var workspaceID, name, schedule, agentID string
+	var enabled, disabled bool
 	cmd := &cobra.Command{
 		Use:   "update <job_id>",
 		Short: "Update a job",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
 			if err != nil {
@@ -32,17 +39,39 @@ func newJobUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			_, r, err := cliCtx.Client.JobsAPI.UpdateJob(cliCtx.APICtx, workspaceID, jobID).Execute()
+			req := saved.UpdateJobRequest{}
+			if name != "" {
+				req.SetName(name)
+			}
+			if schedule != "" {
+				req.SetSchedule(schedule)
+			}
+			if agentID != "" {
+				// req.SetAgentId(agentID)
+			}
+			if enabled {
+				req.SetEnabled(true)
+			}
+			if disabled {
+				req.SetEnabled(false)
+			}
+
+			_, r, err := cliCtx.Client.JobsAPI.UpdateJob(cliCtx.APICtx, workspaceID, jobID).UpdateJobRequest(req).Execute()
 			if err != nil {
 				return internal.PrintAPIError(err)
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Job updated")
+			render.Message(color.GreenString("✓ Job updated"))
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().StringVarP(&name, "name", "n", "", "Job name")
+	cmd.Flags().StringVarP(&schedule, "schedule", "s", "", "Job schedule (cron format)")
+	cmd.Flags().StringVarP(&agentID, "agent", "a", "", "Agent ID")
+	cmd.Flags().BoolVar(&enabled, "enable", false, "Enable the job")
+	cmd.Flags().BoolVar(&disabled, "disable", false, "Disable the job")
 	return cmd
 }
 
@@ -54,10 +83,6 @@ func newJobDeleteCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
 			if err != nil {
@@ -75,7 +100,7 @@ func newJobDeleteCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Job deleted")
+			render.Message(color.GreenString("✓ Job deleted"))
 			return nil
 		},
 	}
@@ -91,10 +116,6 @@ func newJobTriggerCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx := internal.GetCLIContext(cmd.Context())
-			if cliCtx == nil {
-				return fmt.Errorf("CLI context not initialized")
-			}
-
 			var err error
 			workspaceID, err = cliCtx.ResolveWorkspaceID(workspaceID)
 			if err != nil {
@@ -112,9 +133,8 @@ func newJobTriggerCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			color.Green("✓ Job triggered")
-			data, _ := json.MarshalIndent(resp, "", "  ")
-			fmt.Println(string(data))
+			render.Message(color.GreenString("✓ Job triggered"))
+			render.Object(JobTrigger(*resp))
 			return nil
 		},
 	}
