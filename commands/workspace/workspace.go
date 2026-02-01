@@ -68,10 +68,6 @@ func newWorkspaceGetCmd() *cobra.Command {
 				return fmt.Errorf("CLI context not initialized")
 			}
 
-			if !cmd.Flags().Changed("name") {
-				fmt.Fprintln(cmd.OutOrStdout(), "No changes specified. Use --name to set a new name.")
-				return nil
-			}
 
 			id, err := cliCtx.ResolveWorkspaceID(args[0])
 			if err != nil {
@@ -141,6 +137,11 @@ func newWorkspaceUpdateCmd() *cobra.Command {
 			cliCtx := internal.GetCLIContext(cmd.Context())
 			if cliCtx == nil {
 				return fmt.Errorf("CLI context not initialized")
+			}
+
+			if !cmd.Flags().Changed("name") {
+				fmt.Fprintln(cmd.OutOrStdout(), "No changes specified. Use --name to set a new name.")
+				return nil
 			}
 
 			id, err := cliCtx.ResolveWorkspaceID(args[0])

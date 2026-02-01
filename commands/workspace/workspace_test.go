@@ -175,6 +175,25 @@ func TestWorkspaceUpdate(t *testing.T) {
 	assert.Contains(t, output, "✓ Workspace updated")
 }
 
+func TestWorkspaceUpdateNoFlags(t *testing.T) {
+	color.NoColor = true // Disable color for testing.
+	workspaceID := "11111111-1111-1111-1111-111111111111"
+
+	// This handler should not be called.
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected API call")
+	})
+
+	server, client, ctx := setupMockServer(t, handler)
+	defer server.Close()
+
+	ctx = newTestCLIContext(client, ctx)
+	output, err := executeCmd(ctx, workspace.NewWorkspaceCmd(), "update", workspaceID)
+
+	assert.NoError(t, err)
+	assert.Contains(t, output, "No changes specified.")
+}
+
 func TestWorkspaceDelete(t *testing.T) {
 	color.NoColor = true // Disable color for testing.
 	workspaceID := "11111111-1111-1111-1111-111111111111"
