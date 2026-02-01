@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/fatih/color"
 	"github.com/savedhq/sctl/internal"
 	saved "github.com/savedhq/sdk-go"
 	"github.com/stretchr/testify/assert"
@@ -46,9 +47,35 @@ func TestJobCommands(t *testing.T) {
 		case r.Method == http.MethodGet && r.URL.Path == "/v1/workspaces/ws-123/jobs/job-1":
 			json.NewEncoder(w).Encode(jobs[0])
 		case r.Method == http.MethodPost && r.URL.Path == "/v1/workspaces/ws-123/jobs/worker":
+			var req saved.CreateWorkerJobRequest
+			err := json.NewDecoder(r.Body).Decode(&req)
+			assert.NoError(t, err)
+			assert.Equal(t, "test-worker", req.GetName())
+			assert.Equal(t, "0 0 * * *", req.GetSchedule())
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(saved.CreateWorkerJob201Response{Id: saved.PtrString("job-123")})
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/workspaces/ws-123/jobs/agent":
+			var req saved.CreateAgentJobRequest
+			err := json.NewDecoder(r.Body).Decode(&req)
+			assert.NoError(t, err)
+			assert.Equal(t, "test-agent", req.GetName())
+			assert.Equal(t, "0 0 * * *", req.GetSchedule())
+			assert.Equal(t, "agent-123", req.GetAgentId())
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(saved.CreateAgentJob201Response{Id: saved.PtrString("job-456")})
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/workspaces/ws-123/jobs/manual":
+			var req saved.CreateManualJobRequest
+			err := json.NewDecoder(r.Body).Decode(&req)
+			assert.NoError(t, err)
+			assert.Equal(t, "test-manual", req.GetName())
+			w.WriteHeader(http.StatusCreated)
+			json.NewEncoder(w).Encode(saved.CreateManualJob201Response{Id: saved.PtrString("job-789")})
 		case r.Method == http.MethodPatch && r.URL.Path == "/v1/workspaces/ws-123/jobs/job-1":
+			var req saved.UpdateJobRequest
+			err := json.NewDecoder(r.Body).Decode(&req)
+			assert.NoError(t, err)
+			assert.Equal(t, "new-name", req.GetName())
+			assert.Equal(t, "0 1 * * *", req.GetSchedule())
 			w.WriteHeader(http.StatusOK)
 		case r.Method == http.MethodDelete && r.URL.Path == "/v1/workspaces/ws-123/jobs/job-1":
 			w.WriteHeader(http.StatusNoContent)
@@ -74,6 +101,18 @@ func TestJobCommands(t *testing.T) {
 			expected: "✓ Worker job created\nID: job-123\n",
 		},
 		{
+			name:     "create agent job",
+			command:  "create-agent",
+			args:     []string{"--workspace", "Workspace 1", "--name", "test-agent", "--schedule", "0 0 * * *", "--agent", "agent-123"},
+			expected: "✓ Agent job created\nID: job-456\n",
+		},
+		{
+			name:     "create manual job",
+			command:  "create-manual",
+			args:     []string{"--workspace", "Workspace 1", "--name", "test-manual"},
+			expected: "✓ Manual job created\nID: job-789\n",
+		},
+		{
 			name:    "list jobs",
 			command: "list",
 			args:    []string{"--workspace", "Workspace 1"},
@@ -87,6 +126,25 @@ func TestJobCommands(t *testing.T) {
 				"  Enabled: false\n\n",
 		},
 		{
+			name:    "list jobs with json output",
+			command: "list",
+			args:    []string{"--workspace", "Workspace 1", "--json"},
+			expected: "[\n" +
+				"  {\n" +
+				"    \"enabled\": true,\n" +
+				"    \"id\": \"job-1\",\n" +
+				"    \"name\": \"Job 1\",\n" +
+				"    \"type\": \"worker\"\n" +
+				"  },\n" +
+				"  {\n" +
+				"    \"enabled\": false,\n" +
+				"    \"id\": \"job-2\",\n" +
+				"    \"name\": \"Job 2\",\n" +
+				"    \"type\": \"agent\"\n" +
+				"  }\n" +
+				"]\n",
+		},
+		{
 			name:    "get job",
 			command: "get",
 			args:    []string{"Job 1", "--workspace", "Workspace 1"},
@@ -94,6 +152,17 @@ func TestJobCommands(t *testing.T) {
 				"Name: Job 1\n" +
 				"Type: worker\n" +
 				"Enabled: true\n",
+		},
+		{
+			name:    "get job with json output",
+			command: "get",
+			args:    []string{"Job 1", "--workspace", "Workspace 1", "--json"},
+			expected: "{\n" +
+				"  \"enabled\": true,\n" +
+				"  \"id\": \"job-1\",\n" +
+				"  \"name\": \"Job 1\",\n" +
+				"  \"type\": \"worker\"\n" +
+				"}\n",
 		},
 		{
 			name:     "update job",
@@ -125,6 +194,10 @@ func TestJobCommands(t *testing.T) {
 			buf := new(bytes.Buffer)
 			cmd.SetOut(buf)
 			cmd.SetErr(buf)
+
+			color.Output = buf
+			color.Error = buf
+
 			cmd.SetArgs(append([]string{tt.command}, tt.args...))
 			ctx := internal.WithCLIContext(context.Background(), cliCtx)
 			cmd.SetContext(ctx)

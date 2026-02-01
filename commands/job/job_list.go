@@ -11,6 +11,7 @@ import (
 
 func newJobListCmd() *cobra.Command {
 	var workspaceID string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all jobs",
@@ -26,8 +27,7 @@ func newJobListCmd() *cobra.Command {
 				return err
 			}
 
-			var resp []saved.ListJobs200ResponseInner
-			r, err := cliCtx.Client.JobsAPI.ListJobs(cliCtx.APICtx, workspaceID).ExecuteWithBody(&resp)
+			resp, r, err := cliCtx.Client.JobsAPI.ListJobs(cliCtx.APICtx, workspaceID).Execute()
 			if err != nil {
 				return internal.PrintAPIError(err)
 			}
@@ -38,16 +38,22 @@ func newJobListCmd() *cobra.Command {
 				return nil
 			}
 
-			for _, job := range resp {
-				color.Cyan("ID: %s", job.GetId())
-				fmt.Printf("  Name: %s\n", job.GetName())
-				fmt.Printf("  Type: %s\n", job.GetType())
-				fmt.Printf("  Enabled: %v\n\n", job.GetEnabled())
+			if jsonOutput {
+				data, _ := json.MarshalIndent(resp, "", "  ")
+				fmt.Fprintln(cmd.OutOrStdout(), string(data))
+			} else {
+				for _, job := range resp {
+					color.New(color.FgCyan).Fprintf(cmd.OutOrStdout(), "ID: %s\n", job.GetId())
+					fmt.Fprintf(cmd.OutOrStdout(), "  Name: %s\n", job.GetName())
+					fmt.Fprintf(cmd.OutOrStdout(), "  Type: %s\n", job.GetType())
+					fmt.Fprintf(cmd.OutOrStdout(), "  Enabled: %v\n\n", job.GetEnabled())
+				}
 			}
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output as JSON")
 	return cmd
 }
 
@@ -75,8 +81,7 @@ func newJobGetCmd() *cobra.Command {
 				return err
 			}
 
-			var resp saved.ListJobs200ResponseInner
-			r, err := cliCtx.Client.JobsAPI.GetJob(cliCtx.APICtx, workspaceID, jobID).ExecuteWithBody(&resp)
+			resp, r, err := cliCtx.Client.JobsAPI.GetJob(cliCtx.APICtx, workspaceID, jobID).Execute()
 			if err != nil {
 				return internal.PrintAPIError(err)
 			}
@@ -84,12 +89,12 @@ func newJobGetCmd() *cobra.Command {
 
 			if jsonOutput {
 				data, _ := json.MarshalIndent(resp, "", "  ")
-				fmt.Println(string(data))
+				fmt.Fprintln(cmd.OutOrStdout(), string(data))
 			} else {
-				color.Cyan("ID: %s", resp.GetId())
-				fmt.Printf("Name: %s\n", resp.GetName())
-				fmt.Printf("Type: %s\n", resp.GetType())
-				fmt.Printf("Enabled: %v\n", resp.GetEnabled())
+				color.New(color.FgCyan).Fprintf(cmd.OutOrStdout(), "ID: %s\n", resp.GetId())
+				fmt.Fprintf(cmd.OutOrStdout(), "Name: %s\n", resp.GetName())
+				fmt.Fprintf(cmd.OutOrStdout(), "Type: %s\n", resp.GetType())
+				fmt.Fprintf(cmd.OutOrStdout(), "Enabled: %v\n", resp.GetEnabled())
 			}
 			return nil
 		},

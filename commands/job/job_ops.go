@@ -41,7 +41,7 @@ func newJobUpdateCmd() *cobra.Command {
 				req.SetSchedule(schedule)
 			}
 
-			r, err := cliCtx.Client.JobsAPI.UpdateJob(cliCtx.APICtx, workspaceID, jobID).UpdateJobRequest(req).ExecuteWithBody(nil)
+			_, r, err := cliCtx.Client.JobsAPI.UpdateJob(cliCtx.APICtx, workspaceID, jobID).UpdateJobRequest(req).Execute()
 			if err != nil {
 				return internal.PrintAPIError(err)
 			}
@@ -80,7 +80,7 @@ func newJobDeleteCmd() *cobra.Command {
 				return err
 			}
 
-			r, err := cliCtx.Client.JobsAPI.DeleteJob(cliCtx.APICtx, workspaceID, jobID).ExecuteWithBody(nil)
+			r, err := cliCtx.Client.JobsAPI.DeleteJob(cliCtx.APICtx, workspaceID, jobID).Execute()
 			if err != nil {
 				return internal.PrintAPIError(err)
 			}
@@ -117,8 +117,7 @@ func newJobTriggerCmd() *cobra.Command {
 				return err
 			}
 
-			var resp saved.TriggerJob202Response
-			r, err := cliCtx.Client.JobsAPI.TriggerJob(cliCtx.APICtx, workspaceID, jobID).ExecuteWithBody(&resp)
+			resp, r, err := cliCtx.Client.JobsAPI.TriggerJob(cliCtx.APICtx, workspaceID, jobID).Execute()
 			if err != nil {
 				return internal.PrintAPIError(err)
 			}
@@ -126,7 +125,7 @@ func newJobTriggerCmd() *cobra.Command {
 
 			color.Green("✓ Job triggered")
 			data, _ := json.MarshalIndent(resp, "", "  ")
-			fmt.Println(string(data))
+			fmt.Fprintln(cmd.OutOrStdout(), string(data))
 			return nil
 		},
 	}
