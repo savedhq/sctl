@@ -10,7 +10,7 @@ import (
 	"github.com/savedhq/sctl/commands/billing"
 	"github.com/savedhq/sctl/commands/config"
 	"github.com/savedhq/sctl/commands/job"
-	"github.com/savedhq/sctl/commands/schedule"
+	// "github.com/savedhq/sctl/commands/schedule"
 	"github.com/savedhq/sctl/commands/workspace"
 	"github.com/savedhq/sctl/internal"
 	"github.com/spf13/cobra"
@@ -59,7 +59,7 @@ func main() {
 	rootCmd.AddCommand(workspace.NewWorkspaceCmd())
 	rootCmd.AddCommand(agent.NewAgentCmd())
 	rootCmd.AddCommand(job.NewJobCmd())
-	rootCmd.AddCommand(schedule.NewScheduleCmd())
+	// rootCmd.AddCommand(schedule.NewScheduleCmd())
 	rootCmd.AddCommand(backup.NewBackupCmd())
 	rootCmd.AddCommand(billing.NewBillingCmd())
 
