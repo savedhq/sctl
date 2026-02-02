@@ -26,6 +26,7 @@ func NewBillingCmd() *cobra.Command {
 
 func newBillingInfoCmd() *cobra.Command {
 	var workspaceID string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "info",
 		Short: "Get billing information",
@@ -48,17 +49,50 @@ func newBillingInfoCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			data, _ := json.MarshalIndent(resp, "", "  ")
-			fmt.Println(string(data))
+			if jsonOutput {
+				data, err := json.MarshalIndent(resp, "", "  ")
+				if err != nil {
+					return fmt.Errorf("failed to marshal json: %w", err)
+				}
+				fmt.Println(string(data))
+				return nil
+			}
+
+			// Human-readable output
+			data, err := json.Marshal(resp)
+			if err != nil {
+				return fmt.Errorf("failed to marshal json: %w", err)
+			}
+
+			var infoMap map[string]interface{}
+			if err := json.Unmarshal(data, &infoMap); err != nil {
+				return fmt.Errorf("failed to unmarshal json into map: %w", err)
+			}
+
+			color.Cyan("Billing Information:")
+			for key, value := range infoMap {
+				// Simple pretty printing for nested objects
+				if v, ok := value.(map[string]interface{}); ok {
+					fmt.Printf("  %s:\n", key)
+					for k, val := range v {
+						fmt.Printf("    %s: %v\n", k, val)
+					}
+				} else {
+					fmt.Printf("  %s: %v\n", key, value)
+				}
+			}
+
 			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 	return cmd
 }
 
 func newBillingUsageCmd() *cobra.Command {
 	var workspaceID string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "usage",
 		Short: "Get usage history",
@@ -81,6 +115,15 @@ func newBillingUsageCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
+			if jsonOutput {
+				data, err := json.MarshalIndent(resp, "", "  ")
+				if err != nil {
+					return fmt.Errorf("failed to marshal json: %w", err)
+				}
+				fmt.Println(string(data))
+				return nil
+			}
+
 			metrics := resp.GetMetrics()
 			if len(metrics) == 0 {
 				color.Yellow("⚠ No usage data found")
@@ -98,11 +141,13 @@ func newBillingUsageCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 	return cmd
 }
 
 func newBillingInvoicesCmd() *cobra.Command {
 	var workspaceID string
+	var jsonOutput bool
 	cmd := &cobra.Command{
 		Use:   "invoices",
 		Short: "List invoices",
@@ -125,6 +170,15 @@ func newBillingInvoicesCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
+			if jsonOutput {
+				data, err := json.MarshalIndent(resp, "", "  ")
+				if err != nil {
+					return fmt.Errorf("failed to marshal json: %w", err)
+				}
+				fmt.Println(string(data))
+				return nil
+			}
+
 			invoices := resp.GetInvoices()
 			if len(invoices) == 0 {
 				color.Yellow("⚠ No invoices found")
@@ -142,6 +196,7 @@ func newBillingInvoicesCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 	return cmd
 }
 
@@ -153,6 +208,7 @@ func newBillingCreditsCmd() *cobra.Command {
 
 	var workspaceID string
 
+	var jsonOutput bool
 	balanceCmd := &cobra.Command{
 		Use:   "balance",
 		Short: "Get credit balance",
@@ -175,12 +231,24 @@ func newBillingCreditsCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
-			data, _ := json.MarshalIndent(resp, "", "  ")
-			fmt.Println(string(data))
+			if jsonOutput {
+				data, err := json.MarshalIndent(resp, "", "  ")
+				if err != nil {
+					return fmt.Errorf("failed to marshal json: %w", err)
+				}
+				fmt.Println(string(data))
+				return nil
+			}
+
+			// Human-readable output
+			color.Cyan("Credit Balance:")
+			fmt.Printf("  Available: %d %s\n", resp.GetBalance(), resp.GetCurrency())
+
 			return nil
 		},
 	}
 	balanceCmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	balanceCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 
 	transactionsCmd := &cobra.Command{
 		Use:   "transactions",
@@ -204,6 +272,15 @@ func newBillingCreditsCmd() *cobra.Command {
 			}
 			defer r.Body.Close()
 
+			if jsonOutput {
+				data, err := json.MarshalIndent(resp, "", "  ")
+				if err != nil {
+					return fmt.Errorf("failed to marshal json: %w", err)
+				}
+				fmt.Println(string(data))
+				return nil
+			}
+
 			transactions := resp.GetTransactions()
 			if len(transactions) == 0 {
 				color.Yellow("⚠ No transactions found")
@@ -220,6 +297,7 @@ func newBillingCreditsCmd() *cobra.Command {
 		},
 	}
 	transactionsCmd.Flags().StringVarP(&workspaceID, "workspace", "w", "", "Workspace ID")
+	transactionsCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output in JSON format")
 
 	cmd.AddCommand(balanceCmd)
 	cmd.AddCommand(transactionsCmd)
