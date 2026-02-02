@@ -31,6 +31,9 @@ jobs:
           go work use .
           go work use ./local-sdk-go
 
+      - name: Add replace directive to go.mod
+        run: echo "replace github.com/savedhq/sdk-go => ./local-sdk-go" >> go.mod
+
       - name: Tidy modules
         run: go mod tidy
 
