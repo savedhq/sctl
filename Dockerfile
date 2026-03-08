@@ -19,6 +19,8 @@ RUN CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags="-w -s" -o sctl ./cmd/
 # Runtime stage
 FROM alpine:latest
 
+LABEL org.opencontainers.image.description="savedhq/sctl"
+
 RUN apk --no-cache add ca-certificates tzdata
 
 WORKDIR /app
